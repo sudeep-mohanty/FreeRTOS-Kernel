@@ -361,7 +361,7 @@ typedef enum
             mtCOVERAGE_TEST_MARKER();                                                \
         }                                                                            \
         /* Re-enable preemption */                                                   \
-        prvTaskPreemptionEnable( NULL );                                             \
+        xTaskPreemptionEnableWithYieldStatus( NULL );                                             \
     } while( 0 )
 #endif /* #if ( portUSING_GRANULAR_LOCKS == 1 ) */
 
@@ -421,7 +421,7 @@ typedef enum
     ( {                                                                                        \
         portRELEASE_SPINLOCK( portGET_CORE_ID(), ( portSPINLOCK_TYPE * ) ( pxTaskSpinlock ) ); \
         /* Re-enable preemption after releasing the task spinlock. */                          \
-        prvTaskPreemptionEnable( NULL );                                                       \
+        xTaskPreemptionEnableWithYieldStatus( NULL );                                                       \
     } )
 #endif /* #if ( portUSING_GRANULAR_LOCKS == 1 ) */
 
@@ -1639,7 +1639,7 @@ BaseType_t xTaskResumeFromISR( TaskHandle_t xTaskToResume ) PRIVILEGED_FUNCTION;
  * switch, otherwise pdFALSE. This is used by the scheduler to determine if a
  * context switch may be required following the enable.
  */
-    BaseType_t prvTaskPreemptionEnable( const TaskHandle_t xTask );
+    BaseType_t xTaskPreemptionEnableWithYieldStatus( const TaskHandle_t xTask );
 #endif
 
 /*-----------------------------------------------------------
@@ -3948,6 +3948,14 @@ void vTaskInternalSetTimeOutState( TimeOut_t * const pxTimeOut ) PRIVILEGED_FUNC
 #if ( configLIGHTWEIGHT_CRITICAL_SECTION == 1 )
     void vKernelLightWeightExitCritical( void );
 #endif
+
+/*
+ * Checks whether a yield is required after portUNLOCK_DATA_GROUP() returns.
+ * To be called while data group is locked.
+ */
+#if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configNUMBER_OF_CORES > 1 ) )
+    BaseType_t xTaskUnlockCanYield( void );
+#endif /* #if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configNUMBER_OF_CORES > 1 ) ) */
 
 #if ( portUSING_MPU_WRAPPERS == 1 )
 
