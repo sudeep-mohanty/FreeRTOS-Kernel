@@ -5959,15 +5959,14 @@ static BaseType_t prvTaskRemoveFromEventList( const List_t * const pxEventList )
             xReturn = pdFALSE;
 
             #if ( configUSE_PREEMPTION == 1 )
-                if( uxSchedulerSuspended == ( UBaseType_t ) 0U )
-                {
-                    prvYieldForTask( pxUnblockedTCB );
+            {
+                prvYieldForTask( pxUnblockedTCB );
 
-                    if( xYieldPendings[ portGET_CORE_ID() ] != pdFALSE )
-                    {
-                        xReturn = pdTRUE;
-                    }
+                if( xYieldPendings[ portGET_CORE_ID() ] != pdFALSE )
+                {
+                    xReturn = pdTRUE;
                 }
+            }
             #endif /* #if ( configUSE_PREEMPTION == 1 ) */
         }
         #endif /* #if ( configNUMBER_OF_CORES == 1 ) */
@@ -8958,18 +8957,19 @@ TickType_t uxTaskResetEventItemValue( void )
                 #else /* #if ( configNUMBER_OF_CORES == 1 ) */
                 {
                     #if ( configUSE_PREEMPTION == 1 )
-                        if( uxSchedulerSuspended == ( UBaseType_t ) 0U )
-                        {
-                            prvYieldForTask( pxTCB );
+                    /* Yield for the unblocked task is required even when scheduler
+                     * is suspended. */
+                    {
+                        prvYieldForTask( pxTCB );
 
-                            if( xYieldPendings[ portGET_CORE_ID() ] == pdTRUE )
+                        if( xYieldPendings[ portGET_CORE_ID() ] == pdTRUE )
+                        {
+                            if( pxHigherPriorityTaskWoken != NULL )
                             {
-                                if( pxHigherPriorityTaskWoken != NULL )
-                                {
-                                    *pxHigherPriorityTaskWoken = pdTRUE;
-                                }
+                                *pxHigherPriorityTaskWoken = pdTRUE;
                             }
                         }
+                    }
                     #endif /* if ( configUSE_PREEMPTION == 1 ) */
                 }
                 #endif /* #if ( configNUMBER_OF_CORES == 1 ) */
@@ -9093,18 +9093,19 @@ TickType_t uxTaskResetEventItemValue( void )
                 #else /* #if ( configNUMBER_OF_CORES == 1 ) */
                 {
                     #if ( configUSE_PREEMPTION == 1 )
-                        if( uxSchedulerSuspended == ( UBaseType_t ) 0U )
-                        {
-                            prvYieldForTask( pxTCB );
+                    /* Yield for the unblocked task is required even when scheduler
+                     * is suspended. */
+                    {
+                        prvYieldForTask( pxTCB );
 
-                            if( xYieldPendings[ portGET_CORE_ID() ] == pdTRUE )
+                        if( xYieldPendings[ portGET_CORE_ID() ] == pdTRUE )
+                        {
+                            if( pxHigherPriorityTaskWoken != NULL )
                             {
-                                if( pxHigherPriorityTaskWoken != NULL )
-                                {
-                                    *pxHigherPriorityTaskWoken = pdTRUE;
-                                }
+                                *pxHigherPriorityTaskWoken = pdTRUE;
                             }
                         }
+                    }
                     #endif /* #if ( configUSE_PREEMPTION == 1 ) */
                 }
                 #endif /* #if ( configNUMBER_OF_CORES == 1 ) */
@@ -9649,8 +9650,10 @@ void vTaskResetState( void )
         BaseType_t xReturn;
         BaseType_t xCoreID = portGET_CORE_ID();
 
-        if( ( xYieldPendings[ xCoreID ] == pdTRUE ) &&
-            ( uxSchedulerSuspended == ( UBaseType_t ) 0U )
+        /* Current core to call this function should handle the yield request when
+         * the scheduler is suspended. In vTaskSwitchContext, the core will be blocking
+         * on TASK spinlocks until scheduler is resumed. */
+        if( ( xYieldPendings[ xCoreID ] == pdTRUE )
             #if ( configUSE_TASK_PREEMPTION_DISABLE == 1 )
                 && ( pxCurrentTCBs[ xCoreID ]->uxPreemptionDisable == 0U )
             #endif /* ( configUSE_TASK_PREEMPTION_DISABLE == 1 ) */
