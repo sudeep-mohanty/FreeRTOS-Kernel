@@ -3618,15 +3618,15 @@ BaseType_t xQueueIsQueueFullFromISR( const QueueHandle_t xQueue )
         {
             const BaseType_t xCoreID = portGET_CORE_ID();
 
-            /* This API must be called in a critical section which already has preemption
-             * and interrupt disabled. */
-            portGET_SPINLOCK( xCoreID, ( portSPINLOCK_TYPE * ) &( pxQueue->pxQueueSetContainer->xTaskSpinlock ) );
+            /* This API is called within the queue critical section (which
+             * already holds the source queue's task spinlock and disables
+             * interrupts), so only the queue-set container's ISR spinlock
+             * needs to be acquired here. */
             portGET_SPINLOCK( xCoreID, ( portSPINLOCK_TYPE * ) &( pxQueue->pxQueueSetContainer->xISRSpinlock ) );
             {
                 xReturn = prvNotifyQueueSetContainerGeneric( pxQueue, pdFALSE );
             }
             portRELEASE_SPINLOCK( xCoreID, ( portSPINLOCK_TYPE * ) &( pxQueue->pxQueueSetContainer->xISRSpinlock ) );
-            portRELEASE_SPINLOCK( xCoreID, ( portSPINLOCK_TYPE * ) &( pxQueue->pxQueueSetContainer->xTaskSpinlock ) );
         }
         #endif /* if ( portUSING_GRANULAR_LOCKS == 0 ) */
 
