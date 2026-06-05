@@ -462,16 +462,9 @@ BaseType_t xQueueGenericReset( QueueHandle_t xQueue,
                  * will still be empty.  If there are tasks blocked waiting to write to
                  * the queue, then one should be unblocked as after this function exits
                  * it will be possible to write to it. */
-                if( listLIST_IS_EMPTY( &( pxQueue->xTasksWaitingToSend ) ) == pdFALSE )
+                if( xTaskRemoveFromEventList( &( pxQueue->xTasksWaitingToSend ) ) != pdFALSE )
                 {
-                    if( xTaskRemoveFromEventList( &( pxQueue->xTasksWaitingToSend ) ) != pdFALSE )
-                    {
-                        queueYIELD_IF_USING_PREEMPTION();
-                    }
-                    else
-                    {
-                        mtCOVERAGE_TEST_MARKER();
-                    }
+                    queueYIELD_IF_USING_PREEMPTION();
                 }
                 else
                 {
@@ -1180,20 +1173,13 @@ BaseType_t xQueueGenericSend( QueueHandle_t xQueue,
                     {
                         /* If there was a task waiting for data to arrive on the
                          * queue then unblock it now. */
-                        if( listLIST_IS_EMPTY( &( pxQueue->xTasksWaitingToReceive ) ) == pdFALSE )
+                        if( xTaskRemoveFromEventList( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
                         {
-                            if( xTaskRemoveFromEventList( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
-                            {
-                                /* The unblocked task has a priority higher than
-                                 * our own so yield immediately.  Yes it is ok to
-                                 * do this from within the critical section - the
-                                 * kernel takes care of that. */
-                                queueYIELD_IF_USING_PREEMPTION();
-                            }
-                            else
-                            {
-                                mtCOVERAGE_TEST_MARKER();
-                            }
+                            /* The unblocked task has a priority higher than
+                             * our own so yield immediately.  Yes it is ok to
+                             * do this from within the critical section - the
+                             * kernel takes care of that. */
+                            queueYIELD_IF_USING_PREEMPTION();
                         }
                         else if( xYieldRequired != pdFALSE )
                         {
@@ -1252,20 +1238,13 @@ BaseType_t xQueueGenericSend( QueueHandle_t xQueue,
 
                     /* If there was a task waiting for data to arrive on the
                      * queue then unblock it now. */
-                    if( listLIST_IS_EMPTY( &( pxQueue->xTasksWaitingToReceive ) ) == pdFALSE )
+                    if( xTaskRemoveFromEventList( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
                     {
-                        if( xTaskRemoveFromEventList( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
-                        {
-                            /* The unblocked task has a priority higher than
-                             * our own so yield immediately.  Yes it is ok to do
-                             * this from within the critical section - the kernel
-                             * takes care of that. */
-                            queueYIELD_IF_USING_PREEMPTION();
-                        }
-                        else
-                        {
-                            mtCOVERAGE_TEST_MARKER();
-                        }
+                        /* The unblocked task has a priority higher than
+                         * our own so yield immediately.  Yes it is ok to do
+                         * this from within the critical section - the kernel
+                         * takes care of that. */
+                        queueYIELD_IF_USING_PREEMPTION();
                     }
                     else if( xYieldRequired != pdFALSE )
                     {
@@ -1496,20 +1475,13 @@ BaseType_t xQueueGenericSendFromISR( QueueHandle_t xQueue,
                     }
                     else
                     {
-                        if( listLIST_IS_EMPTY( &( pxQueue->xTasksWaitingToReceive ) ) == pdFALSE )
+                        if( xTaskRemoveFromEventListFromISR( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
                         {
-                            if( xTaskRemoveFromEventListFromISR( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
+                            /* The task waiting has a higher priority so
+                             *  record that a context switch is required. */
+                            if( pxHigherPriorityTaskWoken != NULL )
                             {
-                                /* The task waiting has a higher priority so
-                                 *  record that a context switch is required. */
-                                if( pxHigherPriorityTaskWoken != NULL )
-                                {
-                                    *pxHigherPriorityTaskWoken = pdTRUE;
-                                }
-                                else
-                                {
-                                    mtCOVERAGE_TEST_MARKER();
-                                }
+                                *pxHigherPriorityTaskWoken = pdTRUE;
                             }
                             else
                             {
@@ -1524,20 +1496,13 @@ BaseType_t xQueueGenericSendFromISR( QueueHandle_t xQueue,
                 }
                 #else /* configUSE_QUEUE_SETS */
                 {
-                    if( listLIST_IS_EMPTY( &( pxQueue->xTasksWaitingToReceive ) ) == pdFALSE )
+                    if( xTaskRemoveFromEventListFromISR( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
                     {
-                        if( xTaskRemoveFromEventListFromISR( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
+                        /* The task waiting has a higher priority so record that a
+                         * context switch is required. */
+                        if( pxHigherPriorityTaskWoken != NULL )
                         {
-                            /* The task waiting has a higher priority so record that a
-                             * context switch is required. */
-                            if( pxHigherPriorityTaskWoken != NULL )
-                            {
-                                *pxHigherPriorityTaskWoken = pdTRUE;
-                            }
-                            else
-                            {
-                                mtCOVERAGE_TEST_MARKER();
-                            }
+                            *pxHigherPriorityTaskWoken = pdTRUE;
                         }
                         else
                         {
@@ -1670,20 +1635,13 @@ BaseType_t xQueueGiveFromISR( QueueHandle_t xQueue,
                     }
                     else
                     {
-                        if( listLIST_IS_EMPTY( &( pxQueue->xTasksWaitingToReceive ) ) == pdFALSE )
+                        if( xTaskRemoveFromEventListFromISR( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
                         {
-                            if( xTaskRemoveFromEventListFromISR( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
+                            /* The task waiting has a higher priority so
+                             *  record that a context switch is required. */
+                            if( pxHigherPriorityTaskWoken != NULL )
                             {
-                                /* The task waiting has a higher priority so
-                                 *  record that a context switch is required. */
-                                if( pxHigherPriorityTaskWoken != NULL )
-                                {
-                                    *pxHigherPriorityTaskWoken = pdTRUE;
-                                }
-                                else
-                                {
-                                    mtCOVERAGE_TEST_MARKER();
-                                }
+                                *pxHigherPriorityTaskWoken = pdTRUE;
                             }
                             else
                             {
@@ -1698,20 +1656,13 @@ BaseType_t xQueueGiveFromISR( QueueHandle_t xQueue,
                 }
                 #else /* configUSE_QUEUE_SETS */
                 {
-                    if( listLIST_IS_EMPTY( &( pxQueue->xTasksWaitingToReceive ) ) == pdFALSE )
+                    if( xTaskRemoveFromEventListFromISR( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
                     {
-                        if( xTaskRemoveFromEventListFromISR( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
+                        /* The task waiting has a higher priority so record that a
+                         * context switch is required. */
+                        if( pxHigherPriorityTaskWoken != NULL )
                         {
-                            /* The task waiting has a higher priority so record that a
-                             * context switch is required. */
-                            if( pxHigherPriorityTaskWoken != NULL )
-                            {
-                                *pxHigherPriorityTaskWoken = pdTRUE;
-                            }
-                            else
-                            {
-                                mtCOVERAGE_TEST_MARKER();
-                            }
+                            *pxHigherPriorityTaskWoken = pdTRUE;
                         }
                         else
                         {
@@ -2024,16 +1975,9 @@ BaseType_t xQueueSemaphoreTake( QueueHandle_t xQueue,
 
                 /* Check to see if other tasks are blocked waiting to give the
                  * semaphore, and if so, unblock the highest priority such task. */
-                if( listLIST_IS_EMPTY( &( pxQueue->xTasksWaitingToSend ) ) == pdFALSE )
+                if( xTaskRemoveFromEventList( &( pxQueue->xTasksWaitingToSend ) ) != pdFALSE )
                 {
-                    if( xTaskRemoveFromEventList( &( pxQueue->xTasksWaitingToSend ) ) != pdFALSE )
-                    {
-                        queueYIELD_IF_USING_PREEMPTION();
-                    }
-                    else
-                    {
-                        mtCOVERAGE_TEST_MARKER();
-                    }
+                    queueYIELD_IF_USING_PREEMPTION();
                 }
                 else
                 {
@@ -2216,17 +2160,10 @@ BaseType_t xQueuePeek( QueueHandle_t xQueue,
 
                 /* The data is being left in the queue, so see if there are
                  * any other tasks waiting for the data. */
-                if( listLIST_IS_EMPTY( &( pxQueue->xTasksWaitingToReceive ) ) == pdFALSE )
+                if( xTaskRemoveFromEventList( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
                 {
-                    if( xTaskRemoveFromEventList( &( pxQueue->xTasksWaitingToReceive ) ) != pdFALSE )
-                    {
-                        /* The task waiting has a higher priority than this task. */
-                        queueYIELD_IF_USING_PREEMPTION();
-                    }
-                    else
-                    {
-                        mtCOVERAGE_TEST_MARKER();
-                    }
+                    /* The task waiting has a higher priority than this task. */
+                    queueYIELD_IF_USING_PREEMPTION();
                 }
                 else
                 {
@@ -3748,28 +3685,21 @@ BaseType_t xQueueIsQueueFullFromISR( const QueueHandle_t xQueue )
 
             if( cTxLock == queueUNLOCKED )
             {
-                if( listLIST_IS_EMPTY( &( pxQueueSetContainer->xTasksWaitingToReceive ) ) == pdFALSE )
+                BaseType_t xHigherPriorityTaskWoken;
+
+                if( xIsISR == pdTRUE )
                 {
-                    BaseType_t xHigherPriorityTaskWoken;
+                    xHigherPriorityTaskWoken = xTaskRemoveFromEventListFromISR( &( pxQueueSetContainer->xTasksWaitingToReceive ) );
+                }
+                else
+                {
+                    xHigherPriorityTaskWoken = xTaskRemoveFromEventList( &( pxQueueSetContainer->xTasksWaitingToReceive ) );
+                }
 
-                    if( xIsISR == pdTRUE )
-                    {
-                        xHigherPriorityTaskWoken = xTaskRemoveFromEventListFromISR( &( pxQueueSetContainer->xTasksWaitingToReceive ) );
-                    }
-                    else
-                    {
-                        xHigherPriorityTaskWoken = xTaskRemoveFromEventList( &( pxQueueSetContainer->xTasksWaitingToReceive ) );
-                    }
-
-                    if( xHigherPriorityTaskWoken != pdFALSE )
-                    {
-                        /* The task waiting has a higher priority. */
-                        xReturn = pdTRUE;
-                    }
-                    else
-                    {
-                        mtCOVERAGE_TEST_MARKER();
-                    }
+                if( xHigherPriorityTaskWoken != pdFALSE )
+                {
+                    /* The task waiting has a higher priority. */
+                    xReturn = pdTRUE;
                 }
                 else
                 {
