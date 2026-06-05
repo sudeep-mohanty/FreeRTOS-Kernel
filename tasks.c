@@ -485,6 +485,20 @@
     #define kernelEXIT_CRITICAL_FROM_ISR( uxSavedInterruptStatus )    taskEXIT_CRITICAL_FROM_ISR( uxSavedInterruptStatus )
 #endif /* #if ( portUSING_GRANULAR_LOCKS == 1 ) */
 
+/*
+ * Helper macros that pick the appropriate critical-section primitive based on
+ * the number of cores configured.  On SMP builds, multi-core access requires
+ * the kernel data-group lock; on single-core builds, the lighter
+ * port-provided primitive is sufficient.
+ */
+#if ( configNUMBER_OF_CORES > 1 )
+    #define taskBASE_TYPE_ENTER_CRITICAL()    kernelENTER_CRITICAL()
+    #define taskBASE_TYPE_EXIT_CRITICAL()     kernelEXIT_CRITICAL()
+#else /* #if ( configNUMBER_OF_CORES > 1 ) */
+    #define taskBASE_TYPE_ENTER_CRITICAL()    portBASE_TYPE_ENTER_CRITICAL()
+    #define taskBASE_TYPE_EXIT_CRITICAL()     portBASE_TYPE_EXIT_CRITICAL()
+#endif /* #if ( configNUMBER_OF_CORES > 1 ) */
+
 /*-----------------------------------------------------------*/
 
 /*
@@ -2944,15 +2958,7 @@ static void prvInitialiseNewTask( TaskFunction_t pxTaskCode,
 
         traceENTER_uxTaskPriorityGet( xTask );
 
-        #if ( ( configNUMBER_OF_CORES > 1 ) )
-        {
-            kernelENTER_CRITICAL();
-        }
-        #else
-        {
-            portBASE_TYPE_ENTER_CRITICAL();
-        }
-        #endif
+        taskBASE_TYPE_ENTER_CRITICAL();
         {
             /* If null is passed in here then it is the priority of the task
              * that called uxTaskPriorityGet() that is being queried. */
@@ -2961,15 +2967,7 @@ static void prvInitialiseNewTask( TaskFunction_t pxTaskCode,
 
             uxReturn = pxTCB->uxPriority;
         }
-        #if ( ( configNUMBER_OF_CORES > 1 ) )
-        {
-            kernelEXIT_CRITICAL();
-        }
-        #else
-        {
-            portBASE_TYPE_EXIT_CRITICAL();
-        }
-        #endif
+        taskBASE_TYPE_EXIT_CRITICAL();
 
         traceRETURN_uxTaskPriorityGet( uxReturn );
 
@@ -3038,15 +3036,7 @@ static void prvInitialiseNewTask( TaskFunction_t pxTaskCode,
 
         traceENTER_uxTaskBasePriorityGet( xTask );
 
-        #if ( ( configNUMBER_OF_CORES > 1 ) )
-        {
-            kernelENTER_CRITICAL();
-        }
-        #else
-        {
-            portBASE_TYPE_ENTER_CRITICAL();
-        }
-        #endif
+        taskBASE_TYPE_ENTER_CRITICAL();
         {
             /* If null is passed in here then it is the base priority of the task
              * that called uxTaskBasePriorityGet() that is being queried. */
@@ -3055,15 +3045,7 @@ static void prvInitialiseNewTask( TaskFunction_t pxTaskCode,
 
             uxReturn = pxTCB->uxBasePriority;
         }
-        #if ( ( configNUMBER_OF_CORES > 1 ) )
-        {
-            kernelEXIT_CRITICAL();
-        }
-        #else
-        {
-            portBASE_TYPE_EXIT_CRITICAL();
-        }
-        #endif
+        taskBASE_TYPE_EXIT_CRITICAL();
 
         traceRETURN_uxTaskBasePriorityGet( uxReturn );
 
@@ -3398,30 +3380,14 @@ static void prvInitialiseNewTask( TaskFunction_t pxTaskCode,
 
         traceENTER_vTaskCoreAffinityGet( xTask );
 
-        #if ( ( configNUMBER_OF_CORES > 1 ) )
-        {
-            kernelENTER_CRITICAL();
-        }
-        #else
-        {
-            portBASE_TYPE_ENTER_CRITICAL();
-        }
-        #endif
+        taskBASE_TYPE_ENTER_CRITICAL();
         {
             pxTCB = prvGetTCBFromHandle( xTask );
             configASSERT( pxTCB != NULL );
 
             uxCoreAffinityMask = pxTCB->uxCoreAffinityMask;
         }
-        #if ( ( configNUMBER_OF_CORES > 1 ) )
-        {
-            kernelEXIT_CRITICAL();
-        }
-        #else
-        {
-            portBASE_TYPE_EXIT_CRITICAL();
-        }
-        #endif
+        taskBASE_TYPE_EXIT_CRITICAL();
 
         traceRETURN_vTaskCoreAffinityGet( uxCoreAffinityMask );
 
