@@ -407,12 +407,12 @@ typedef enum
  * \ingroup GranularLocks
  */
 #if ( portUSING_GRANULAR_LOCKS == 1 )
-    #define taskDATA_GROUP_UNLOCK( pxTaskSpinlock )                                            \
-    ( {                                                                                        \
-        portRELEASE_SPINLOCK( portGET_CORE_ID(), ( portSPINLOCK_TYPE * ) ( pxTaskSpinlock ) ); \
-        /* Re-enable preemption after releasing the task spinlock. */                          \
-        xTaskPreemptionEnableWithYieldStatus( NULL );                                          \
-    } )
+
+/* Release the task spinlock and re-enable preemption.
+ * Returns the yield status reported by xTaskPreemptionEnableWithYieldStatus(). */
+    #define taskDATA_GROUP_UNLOCK( pxTaskSpinlock )                                          \
+    ( portRELEASE_SPINLOCK( portGET_CORE_ID(), ( portSPINLOCK_TYPE * ) ( pxTaskSpinlock ) ), \
+      xTaskPreemptionEnableWithYieldStatus( NULL ) )
 #endif /* #if ( portUSING_GRANULAR_LOCKS == 1 ) */
 
 /*-----------------------------------------------------------
