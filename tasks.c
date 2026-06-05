@@ -1020,6 +1020,18 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB ) PRIVILEGED_FUNCTION;
 
 #endif /* #if ( ( configUSE_TRACE_FACILITY == 1 ) && ( configUSE_STATS_FORMATTING_FUNCTIONS > 0 ) ) */
 
+/*
+ * Helpers used to enter and exit the kernel critical section from a context
+ * that is already inside a data-group critical section (and therefore already
+ * holds the data-group's ISR spinlock with interrupts disabled).
+ *
+ * Unlike kernelENTER_CRITICAL_FROM_ISR/kernelEXIT_CRITICAL_FROM_ISR, these
+ * helpers do not touch the interrupt state: the outer data-group critical
+ * section is responsible for that.  They only acquire/release the kernel
+ * ISR spinlock and adjust the per-core kernel critical-nesting count, so
+ * that callers can safely access kernel-data-group members while remaining
+ * within the surrounding data-group critical section's lock hierarchy.
+ */
 static void prvKernelEnterISROnlyCritical( void );
 
 static void prvKernelExitISROnlyCritical( void );
@@ -3661,8 +3673,6 @@ static void prvInitialiseNewTask( TaskFunction_t pxTaskCode,
             kernelENTER_CRITICAL();
         #endif
         {
-            const BaseType_t xCoreID = portGET_CORE_ID();
-
             if( xSchedulerRunning != pdFALSE )
             {
                 /* Current task running on the core can not be changed by other core.
@@ -5646,7 +5656,7 @@ BaseType_t xTaskIncrementTick( void )
              * count is being unwound (when the scheduler is being unlocked). */
             if( xPendedTicks == ( TickType_t ) 0 )
             {
-                #if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configUSE_TICK_HOOK == 1 ) )
+                #if ( portUSING_GRANULAR_LOCKS == 1 )
                 {
                     xApplicationTickRequired = pdTRUE;
                 }
@@ -5716,15 +5726,19 @@ BaseType_t xTaskIncrementTick( void )
 
         /* The tick hook gets called at regular intervals, even if the
          * scheduler is locked. */
-        #if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configUSE_TICK_HOOK == 1 ) )
+        #if ( configUSE_TICK_HOOK == 1 )
         {
-            xApplicationTickRequired = pdTRUE;
+            #if ( portUSING_GRANULAR_LOCKS == 1 )
+            {
+                xApplicationTickRequired = pdTRUE;
+            }
+            #else
+            {
+                vApplicationTickHook();
+            }
+            #endif
         }
-        #else
-        {
-            vApplicationTickHook();
-        }
-        #endif
+        #endif /* configUSE_TICK_HOOK */
     }
 
     #if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configNUMBER_OF_CORES > 1 ) )
@@ -6211,9 +6225,9 @@ void vTaskPlaceOnUnorderedEventList( List_t * pxEventList,
 
 BaseType_t xTaskRemoveFromEventList( const List_t * const pxEventList )
 {
-    traceENTER_xTaskRemoveFromEventList( pxEventList );
-
     BaseType_t xReturn;
+
+    traceENTER_xTaskRemoveFromEventList( pxEventList );
 
     #if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configNUMBER_OF_CORES > 1 ) )
         /* Lock the kernel data group as we are about to access its members */
@@ -6234,11 +6248,12 @@ BaseType_t xTaskRemoveFromEventList( const List_t * const pxEventList )
 
 BaseType_t xTaskRemoveFromEventListFromISR( const List_t * const pxEventList )
 {
-    traceENTER_xTaskRemoveFromEventListFromISR( pxEventList );
-
     BaseType_t xReturn;
 
+    traceENTER_xTaskRemoveFromEventListFromISR( pxEventList );
+
     #if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configNUMBER_OF_CORES > 1 ) )
+    {
         UBaseType_t uxSavedInterruptStatus;
 
         /* Lock the kernel data group as we are about to access its members */
@@ -6247,9 +6262,12 @@ BaseType_t xTaskRemoveFromEventListFromISR( const List_t * const pxEventList )
             xReturn = prvTaskRemoveFromEventList( pxEventList );
         }
         kernelEXIT_CRITICAL_FROM_ISR( uxSavedInterruptStatus );
-    #else
+    }
+    #else  /* if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configNUMBER_OF_CORES > 1 ) ) */
+    {
         xReturn = prvTaskRemoveFromEventList( pxEventList );
-    #endif
+    }
+    #endif /* if ( ( portUSING_GRANULAR_LOCKS == 1 ) && ( configNUMBER_OF_CORES > 1 ) ) */
 
     traceRETURN_xTaskRemoveFromEventListFromISR( xReturn );
     return xReturn;
